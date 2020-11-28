@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-#  # Cluster analysis of the top 100 valuable fifa 2020 players
+#  # Cluster analysis of the top 100 valuable FIFA 2020 players
 #  
-# In this exercise I will do cluster analysis with a machine learning technique called K-means clustering which is an unsupervised machine learning algorithm. The provided data set do have player's positions but I will not include them. After I have performed a K-means clustering I will compare the results with the provided data set.
+# In this exercise soccer players skills will be used to determine their positions by using a machine learning technique called K-means clustering which is an unsupervised machine learning algorithm. The algorithm tries to find relationships between the observations which have similair pattern and try to cluster them together. The provided data set do have player's positions but will not include them during clustering, otherwise this exercise is meaningless.
+# The player's position data will be compared later after the cluster analysis to se how the analysis performed.
+# 
 # 
 # ### Table of contents:
 # *   Data cleaning
@@ -45,12 +47,6 @@ df_top100 = df.sort_values('value_eur',ascending=False)[:100]
 df_top100.head()            
 
 
-# In[ ]:
-
-
-
-
-
 # In[4]:
 
 
@@ -78,7 +74,12 @@ df_top100_new.isnull().any()
 
 # All null values are now replaced. Let's explore the data set before cluster analysis.
 # 
-# Let's plot how the age distribution is among the top 100 players
+# 
+# ## Exploratory data analysis (EDA)
+# 
+# Time to do some EDA to get a better picture of our data set.
+# 
+# Let's plot how the age distribution is among the top 100 valuable players
 
 # In[7]:
 
@@ -89,30 +90,88 @@ plt.title('Age distribution among top 100 valuable  players')
 plt.show()
 
 
+# From the histogram one can see that the average age is around 26 year and that the age distribution is normal distributed.
+# 
+# 
+# As mentioned earlier, player's positions will not be included in the clustering. But for the EDA, the positions can be intereting to explore. Let's see how the positions are denoted for some of the players first
+# 
+
 # In[8]:
 
 
-df_top100_new['age_cat']=pd.cut(df_top100['age'],bins=[19,24,29,34],include_lowest=True,labels=['Low age', 'Mid age', 'High age'] )
+df_top100[['short_name','player_positions']].head()
 
 
-# From the histogram we can see that the average age is around 26 year and that the age distribution is normal distributed.
+# For convenience, the positions from the data set need to be translated into the four positions: <i>Goalkeeper</i>, <i>Defender</i>, <i>Midfielder</i> and <i>Striker</i>.
 # 
-# 
+# At the moment the positions are divided into sub-groups. For instance, Messi can have either following positions: <i>RW</i>, <i>CF</i> and <i>ST</i> which are different positions for a striker. 
+# The sub-positions will be replaced with one of the main positions.
 
 # In[9]:
 
 
-plt.figure(figsize=(10,4))
-sns.scatterplot(data=df_top100_new, x="value_eur", y="wage_eur", hue='age_cat')
-plt.title('Wage vs Value')
+# Plot number of players for each positions
+
+def change_pos_name(row):
+    """
+    INPUT: Players postions, the sub-group
+    OUTPUT: One of the main four positions
+    
+    The function replaces the sub-group positions and 
+    return one of the main four position to respectively player
+    
+    """
+    if row.replace(",",'').split()[0] in ("RB" , "CB" , "LB" , "RCB" , "RWB" , "LCB"):
+         return 'Defender'
+    if row.replace(",",'').split()[0] in ("RW" , "CF" , "LW" , "ST" , "RS" , "LS" , "LF" , "RF" ):
+        return 'Striker'
+    if row.replace(",",'').split()[0] in ("RM" , "CM" , "LM" , "CAM" , "LDM" , "RDM" , "LAM" , "RAM" , "CDM", "RCM", "LCM"):
+        return 'Midfielder'
+    else:
+        return 'Goalkeeper'
+
+
+df_top100['player_positions_update']=df_top100['player_positions'].apply(lambda row:change_pos_name(row))
+df_top100['player_positions_update'].hist()
 plt.show()
 
 
-# From the plot we can see a trend that higher value yield a higher wage. 
-# Player with a higher age tends to have a higher salary comapred to the younger players with similair value. Most of the younger players have also a lower value.
+# Midfielder is the dominating position and goalkeeper is the least dominating position.
 
 # In[10]:
 
+
+# Plot the average salary for each positions
+sns.barplot(x='player_positions_update', y='value_eur',data=df_top100,ci="sd")
+plt.show()
+
+
+# Despite goalkeeper is the least dominating positions among 100 most valuable players, it has the second largest average salary. Highest salary does striker has and it is also the position with the highest variance among all positions. Defender has the least variance.
+# Let's plot the relation between Wage vs Value for each position
+
+# 
+# 
+
+# In[11]:
+
+
+# Plot Wage vs Value for the positions
+
+plt.figure(figsize=(12,4))
+sns.scatterplot(data=df_top100, x="value_eur", y="wage_eur", hue='player_positions_update')
+plt.title('Wage vs Value')
+plt.legend()
+plt.show()
+
+
+# When it comes to value, the scatterplot complies with the previous barplot. There is one midfielder that stands out when it comes to value. However, majority of the midfielder only has 50% of that value which also lower the average salary as can be seen in the barplot. The trend for each position is the same, that is, a higher value gives a higher wage. However, the trend is different, striker has the strongest trend and goalkeeper seems to have an almost horizontal trend.
+# 
+# Let's also see if age matters and plot the top 10 players with highest value. The age will be divided into three categories <i>Low age</i>, <i>Mid age</i> and <i>High age</i>.
+
+# In[12]:
+
+
+df_top100_new['age_cat']=pd.cut(df_top100['age'],bins=[19,24,29,34],include_lowest=True,labels=['Low age', 'Mid age', 'High age'] )
 
 fig, ax = plt.subplots(figsize=(13,5))
 
@@ -129,9 +188,12 @@ plt.title('Wage vs Value')
 plt.show()
 
 
+# From the plot we can see a trend that higher value yield a higher wage. 
+# Player with a higher age tends to have a higher salary comapred to the younger players with similair value. Most of the younger players have also a lower value.
+
 # Now let's see which are the top 10 countries among the top 100 valuable players
 
-# In[11]:
+# In[13]:
 
 
 nationality_count = df_top100.groupby('nationality')['sofifa_id'].count().sort_values(ascending=False)
@@ -147,7 +209,7 @@ plt.show()
 # 
 # Before I do the clustering I need to choose some features that I need. There are 104 features in total in the data set but I will just choose a few of them that I think are relevant. The values will be standardized so we are normal distributed. We will then determine the number of clusters we will use with <i>Elbow method</i>. Lastly we will try to identify which positions each cluster is represented.
 
-# In[12]:
+# In[14]:
 
 
 # Choose the features we will use
@@ -165,16 +227,16 @@ col = ['weak_foot', 'skill_moves',
 df_top100_update = df_top100_new[col]
 
 
-# In[13]:
+# In[15]:
 
 
-#Standardise the valaues
+# Standardise the valaues
 standard = StandardScaler()
 df_standard = standard.fit_transform(df_top100_update)
 df_standard
 
 
-# In[14]:
+# In[16]:
 
 
 # Perform K-means clustering. Assuming 1 to 10 clusters
@@ -187,7 +249,7 @@ for i in range(1,11):
     wcss.append(kmeans.inertia_)
 
 
-# In[15]:
+# In[17]:
 
 
 # Plot sum of squared distances of samples to their closest cluster center vs number of clusters
@@ -203,7 +265,7 @@ plt.show()
 # 
 # We will use 4 clusters for our cluster analysis
 
-# In[16]:
+# In[18]:
 
 
 # K-means with 4 clusters
@@ -214,7 +276,7 @@ kmeans =KMeans(n_clusters = 4,
 kmeans.fit(df_standard)
 
 
-# In[17]:
+# In[19]:
 
 
 # print the cluster for each 100 players
@@ -222,7 +284,7 @@ kmeans.fit(df_standard)
 kmeans.labels_
 
 
-# In[18]:
+# In[20]:
 
 
 df_kmeans = df_top100_update.copy()
@@ -239,7 +301,7 @@ df_kmeans_analysis
 # 
 # We can almost conclude that Cluster 1 is defender and Cluster 2 is goalkeeper. Let's look how each cluster are distributed for each skill
 
-# In[19]:
+# In[21]:
 
 
 #Visualise each skill for each cluster in a histogram 
@@ -255,7 +317,7 @@ for i in df_kmeans_i.iloc[:,1:20]:
 # 
 # Let's see how the clusters are related to each other and between the skills
 
-# In[20]:
+# In[22]:
 
 
 import warnings
@@ -268,7 +330,7 @@ sns.pairplot(df_kmeans,vars=['shooting','passing', 'dribbling', 'defending',
 plt.show()
 
 
-# In[21]:
+# In[23]:
 
 
 sns.pairplot(df_kmeans,vars=[  'goalkeeping_handling', 'goalkeeping_kicking',
@@ -278,9 +340,9 @@ sns.pairplot(df_kmeans,vars=[  'goalkeeping_handling', 'goalkeeping_kicking',
 plt.show()
 
 
-# Again, from the pairplots we can distinguish the cluster 1 and cluster 2. For cluster 0 and cluster 3 we can see that they are clustered more closer together for the skills shooting, passing and defending. This can be due to some players switching between positions striker and midfielder or a midfielder play a more offensive role or vice versa.
+# Again, from the pairplots we can distinguish the cluster 1 and cluster 2 easier compared to the other two clusters. For cluster 0 and cluster 3 the observations are more clustered together for certain skills which implies that some players have a midfielder and a striker role. This also applies for some midfielders and defenders but it is not as common according to the plots. From the histogram the values for cluster 3 were higher in terms of the skills <i>shooting</i> and <i>attacking_finishing</i> which implies that cluster 3 is striker and cluster 0 is midfielder. 
 
-# In[22]:
+# In[24]:
 
 
 # Change cluster number to position name
@@ -291,34 +353,11 @@ df_kmeans['cluster']=df_kmeans['cluster'].map({0:"Midfielder",
 
 
 # We will compare the cluster results with the player position that was provided from the data set.
-# 
-# Before comparing, the players positions from the data set need to be translated into the four positions: <i>Goalkeeper</i>, <i>Defender</i>, <i>Midfielder</i> and <i>Striker</i>.
-# 
-# At the moment the positions are divided into sub-groups. For instance, Messi can have either following positions: <i>RW</i>, <i>CF</i> and <i>ST</i> which are different positions for a striker.
-# 
 
-# In[23]:
+# In[25]:
 
 
-def change_pos_name(row):
-    """
-    INPUT: Players postions, the sub-group
-    OUTPUT: One of the main four positions
-    
-    The function replaces the sub-group positions and 
-    return one of the main four position to respectively player
-    
-    """
-    if row.replace(",",'').split()[0] in ("RB" , "CB" , "LB" , "RCB" , "RWB" , "LCB"):
-         return 'Defender'
-    if row.replace(",",'').split()[0] in ("RW" , "CF" , "LW" , "ST" , "RS" , "LS" , "LF" , "RF" ):
-        return 'Striker'
-    if row.replace(",",'').split()[0] in ("RW" , "CF" , "LW" , "ST" , "RS" , "LS" , "LF" , "RF" ):
-        return 'Midfielder'
-    if row.replace(",",'').split()[0] in ("RM" , "CM" , "LM" , "CAM" , "LDM" , "RDM" , "LAM" , "RAM" , "CDM", "RCM", "LCM"):
-        return 'Midfielder'
-    else:
-        return 'Goalkeeper'
+
                                                 
     
 # Take only the top 100 valuable players from the ordignial data set
@@ -333,7 +372,7 @@ player_cluster
 
 # We can see that there are some differences, it is mostly the midfielder positions that appears to be harder to cluster. We can calculate and see how many mismatches there are among the 100 players.
 
-# In[24]:
+# In[26]:
 
 
 def compare(row):
@@ -346,6 +385,7 @@ def compare(row):
     """
     
     if row[1] != row[2]:
+        
         return 1
     else:
         return 0
@@ -360,6 +400,8 @@ np.array(not_equal).sum()
 
 # From the data set I took the most valuable 100 players.
 # EDA showed:
+# *    Midfielder are the dominating position and goalkeeper is least dominating position
+# *    Striker has highest average salary and goalkeeper has the second highest. Defender has the lowest average salary.
 # *    The average age among the players are around 26 years
 # *    Younger players value more skewed to lower range compared to the other age group
 # *    Top 10 countries are dominated by European countries with France, Spain and Germany as top 3. Brazil and Argentina are the only countries that are not from Europe.
@@ -367,3 +409,9 @@ np.array(not_equal).sum()
 # Different method were performed to see patterns among the clusters during the cluster analysis. Two distinct clusters could be distinguished from the cluster analysis which belonged to defender and goalkeeper. Striker and midfielder positions were harder due to some players maybe switching between positions striker and midfielder or a midfielder maybe play a more offensive role or vice versa.
 # Lastly, the positions that were determined by the cluster analysis were compared with the positions provided from the data set. 22 of 100 positions of did not match with the provided data. Considering that some players can have both defensive/offensive positions which makes it harder for the cluster to distinguish some players positions. This is considering fairly good clustering without tweaking the parameter. Some further works can be done in the future to make the results better.
 # 
+
+# In[ ]:
+
+
+
+
