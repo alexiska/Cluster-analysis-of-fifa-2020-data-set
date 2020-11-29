@@ -117,18 +117,36 @@ def change_pos_name(row):
     INPUT: Players postions, the sub-group
     OUTPUT: One of the main four positions
     
-    The function replaces the sub-group positions and 
-    return one of the main four position to respectively player
-    
-    """
-    if row.replace(",",'').split()[0] in ("RB" , "CB" , "LB" , "RCB" , "RWB" , "LCB"):
-         return 'Defender'
-    if row.replace(",",'').split()[0] in ("RW" , "CF" , "LW" , "ST" , "RS" , "LS" , "LF" , "RF" ):
-        return 'Striker'
-    if row.replace(",",'').split()[0] in ("RM" , "CM" , "LM" , "CAM" , "LDM" , "RDM" , "LAM" , "RAM" , "CDM", "RCM", "LCM"):
-        return 'Midfielder'
+    The function takes the inputs variable and splits the string.
+    Each splitted strings are then looped and identified as a new player postision and are stored in the list "pos".
+    If the list only consist of one player position, then that player position will be returned. 
+    Else, if the number of player positions are more than one. Count the number  of occurrnce 
+    for each player postions in the list and send the one which highest number.
+    If the number is equal between the player positions then return the postion in the list. 
+       
+    """ 
+    pos = []
+    positions = row.replace(",",'').split() # Split the string with the positions
+
+    for i in positions:
+        if i in ["RB" , "CB" , "LB" , "RCB" , "RWB" , "LCB"]:
+            pos.append('Defender')
+        if i in ["RW" , "CF" , "LW" , "ST" , "RS" , "LS" , "LF" , "RF"] :
+            pos.append('Striker')
+        if i in ["RM" , "CM" , "LM" , "CAM" , "LDM" , "RDM" , "LAM" , "RAM" , "CDM", "RCM", "LCM"]:
+            pos.append('Midfielder')
+        if i in ["GK"]:
+            pos.append('Goalkeeper')
+
+    if len(pos) == 1:
+        return pos[0]
     else:
-        return 'Goalkeeper'
+        if pos.count(pos[0]) == 1 and pos.count(pos[1]) == 1:
+            return pos[0]
+        if pos.count(pos[0]) == 1 and pos.count(pos[1]) != 1:
+            return pos[1]
+        if pos.count(pos[0]) != 1: 
+            return pos[0]
 
 
 df_top100['player_positions_update']=df_top100['player_positions'].apply(lambda row:change_pos_name(row))
@@ -207,7 +225,7 @@ plt.show()
 
 # # Cluster analysis with K-means clustering
 # 
-# Before I do the clustering I need to choose some features that I need. There are 104 features in total in the data set but I will just choose a few of them that I think are relevant. The values will be standardized so we are normal distributed. We will then determine the number of clusters we will use with <i>Elbow method</i>. Lastly we will try to identify which positions each cluster is represented.
+# Before the clustering some features will be chosen. There are 104 features in total in the data set but in this analysis only a few of them will be incuded. The values will be standardized which makes them more normal distributed.The number of clusters will be determined with <i>Elbow method</i>. Lastly, the clusters will be translated to players positions using different methods such as averge skill set for each cluster, historgram and pairplots. 
 
 # In[14]:
 
@@ -219,7 +237,6 @@ col = ['weak_foot', 'skill_moves',
        'defending_sliding_tackle', 'goalkeeping_diving',
        'goalkeeping_handling', 'goalkeeping_kicking',
        'goalkeeping_positioning', 'goalkeeping_reflexes',
-      
       'attacking_crossing', 'attacking_finishing',
        'attacking_heading_accuracy', 'attacking_short_passing',
        'attacking_volleys']
@@ -320,8 +337,6 @@ for i in df_kmeans_i.iloc[:,1:20]:
 # In[22]:
 
 
-import warnings
-warnings.filterwarnings("ignore")
 sns.pairplot(df_kmeans,vars=['shooting','passing', 'dribbling', 'defending',  
                             'defending_marking', 'defending_standing_tackle'],                           
                              hue='cluster',palette="tab10")
@@ -340,7 +355,14 @@ sns.pairplot(df_kmeans,vars=[  'goalkeeping_handling', 'goalkeeping_kicking',
 plt.show()
 
 
-# Again, from the pairplots we can distinguish the cluster 1 and cluster 2 easier compared to the other two clusters. For cluster 0 and cluster 3 the observations are more clustered together for certain skills which implies that some players have a midfielder and a striker role. This also applies for some midfielders and defenders but it is not as common according to the plots. From the histogram the values for cluster 3 were higher in terms of the skills <i>shooting</i> and <i>attacking_finishing</i> which implies that cluster 3 is striker and cluster 0 is midfielder. 
+# Cluster 2 is very easy to distinguish in the pairplot. The other clusters are close to cluster 0 for certain skills. This is maybe due to the players do have a more offensive or defensive role. From earlier, the conclusion was cluster 2 is goalkeeper and cluster 1 is defender. Cluster 3 is probably striker and cluster 0 is midfielder. That should make sense since some players in cluster 1 and cluster 3 are very close to cluster 0. This means they swtich positions sometimes which is common for some players.
+# 
+# From the clustering:
+# *  cluster 0: Midfielder
+# *  cluster 1: Defender
+# *  cluster 2: Goalkeeper
+# *  cluster 3: Striker
+# 
 
 # In[24]:
 
@@ -352,14 +374,11 @@ df_kmeans['cluster']=df_kmeans['cluster'].map({0:"Midfielder",
                                                3:"Striker"})
 
 
-# We will compare the cluster results with the player position that was provided from the data set.
+# Compare the cluster results with the player positions that were provided from the data set.
 
 # In[25]:
 
 
-
-                                                
-    
 # Take only the top 100 valuable players from the ordignial data set
 player_name = df.loc[df_kmeans.index][['short_name','player_positions']]
 
@@ -370,7 +389,8 @@ player_cluster = pd.concat([player_name,df_kmeans],axis=1)[['short_name','player
 player_cluster
 
 
-# We can see that there are some differences, it is mostly the midfielder positions that appears to be harder to cluster. We can calculate and see how many mismatches there are among the 100 players.
+# The midfielder position seems to have some difficulties to cluster for some players which also complies with the pairplot as mentioned before.
+# Let's calculate and see how many mismatches there are among the 100 players.
 
 # In[26]:
 
@@ -406,12 +426,5 @@ np.array(not_equal).sum()
 # *    Younger players value more skewed to lower range compared to the other age group
 # *    Top 10 countries are dominated by European countries with France, Spain and Germany as top 3. Brazil and Argentina are the only countries that are not from Europe.
 # 
-# Different method were performed to see patterns among the clusters during the cluster analysis. Two distinct clusters could be distinguished from the cluster analysis which belonged to defender and goalkeeper. Striker and midfielder positions were harder due to some players maybe switching between positions striker and midfielder or a midfielder maybe play a more offensive role or vice versa.
-# Lastly, the positions that were determined by the cluster analysis were compared with the positions provided from the data set. 22 of 100 positions of did not match with the provided data. Considering that some players can have both defensive/offensive positions which makes it harder for the cluster to distinguish some players positions. This is considering fairly good clustering without tweaking the parameter. Some further works can be done in the future to make the results better.
-# 
-
-# In[ ]:
-
-
-
-
+# Different method were performed to see patterns among the clusters during the cluster analysis. Two distinct clusters could be distinguished from the average skill set wihch were defender and goalkeeper. The midfielder position hade some difficulties to cluster for some players positions such as defender and striker. This can be explained that that some players switch between two positions depending the situation.
+# Lastly, the positions that were determined by the cluster analysis were compared with the positions provided from the data set. 22 of 100 positions of did not match with the provided data. Considering that some players play different positions  makes it harder for the cluster to distinguish some players positions. 
